@@ -24,6 +24,7 @@ const VideoPlayer = () => {
     isResourcesOpen,
     isNotesOpen,
     isAITutorOpen,
+    isSkipModalOpen,
     markInVideoQuestionAnswered
   } = useCourse();
   

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { CourseProvider } from '@/context/CourseContext';
 import VideoPlayer from '@/components/VideoPlayer';
@@ -22,7 +21,8 @@ import {
   Award,
   Bookmark,
   CheckSquare,
-  Star
+  Star,
+  ThumbsUp
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
@@ -239,7 +239,7 @@ const QuestionSection = () => {
                     <p className="mt-1">{question.content}</p>
                     
                     <div className="mt-3 space-y-3">
-                      {question.answers.map(answer => (
+                      {question.answers && question.answers.map(answer => (
                         <div 
                           key={answer.id} 
                           className={cn(
@@ -344,7 +344,6 @@ const CourseContent = () => {
       <BreadcrumbNav />
       
       <div className="flex flex-col md:flex-row gap-6">
-        {/* Left column - Video and info */}
         <div className="w-full md:w-2/3 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className="text-2xl md:text-3xl font-bold">
@@ -621,7 +620,6 @@ const CourseContent = () => {
           </Card>
         </div>
         
-        {/* Right column - Modules & Attendance */}
         <div className="w-full md:w-1/3 space-y-6">
           <div className="hidden md:block">
             <div className="flex items-center mb-4">

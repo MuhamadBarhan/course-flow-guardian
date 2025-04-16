@@ -1,5 +1,5 @@
 
-import { Module, AttendanceRecord, Assessment, CourseMetadata, Resource, Question } from "@/types/course";
+import { Module, AttendanceRecord, Assessment, CourseMetadata, Resource, Question, AssessmentQuestion } from "@/types/course";
 import { addDays, subDays, format } from "date-fns";
 
 // Helper to create dates for the course
@@ -181,13 +181,13 @@ export const assessments: Assessment[] = [
         text: "Which tag is used to create a hyperlink?",
         options: ["<link>", "<a>", "<href>", "<url>"],
         correctOptionIndex: 1,
-      },
+      } as AssessmentQuestion,
       {
         id: "q2",
         text: "Which HTML element is used to define the structure of an HTML document?",
         options: ["<body>", "<structure>", "<html>", "<head>"],
         correctOptionIndex: 2,
-      },
+      } as AssessmentQuestion,
     ],
   },
   {
@@ -201,13 +201,13 @@ export const assessments: Assessment[] = [
         text: "Which property is used to change the text color?",
         options: ["text-color", "font-color", "color", "text-style"],
         correctOptionIndex: 2,
-      },
+      } as AssessmentQuestion,
       {
         id: "q2",
         text: "Which CSS property controls the spacing between elements?",
         options: ["spacing", "margin", "padding", "border"],
         correctOptionIndex: 1,
-      },
+      } as AssessmentQuestion,
     ],
   },
   {
@@ -221,13 +221,13 @@ export const assessments: Assessment[] = [
         text: "Which of the following is a JavaScript data type?",
         options: ["String", "Char", "Integer", "Float"],
         correctOptionIndex: 0,
-      },
+      } as AssessmentQuestion,
       {
         id: "q2",
         text: "What will console.log(typeof([])) output?",
         options: ["array", "object", "list", "undefined"],
         correctOptionIndex: 1,
-      },
+      } as AssessmentQuestion,
     ],
   },
 ];
@@ -301,6 +301,7 @@ export const questions: Question[] = [
     content: "Why do we need the doctype declaration at the top of HTML documents?",
     createdAt: formatDate(subDays(today, 7)),
     resolved: true,
+    upvotes: 0, // Add upvotes property
     answers: [
       {
         id: "answer-1",
@@ -322,6 +323,7 @@ export const questions: Question[] = [
     content: "How do I make my website responsive for different screen sizes?",
     createdAt: formatDate(subDays(today, 4)),
     resolved: false,
+    upvotes: 0, // Add upvotes property
     answers: []
   }
 ];

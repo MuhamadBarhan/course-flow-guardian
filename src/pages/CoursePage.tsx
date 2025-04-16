@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 const ResourcesPanel: React.FC = () => {
   const { currentLesson, isResourcesOpen } = useCourse();
@@ -150,10 +152,10 @@ const NotesPanel: React.FC = () => {
                       {format(parseISO(note.updatedAt), 'MMM d, yyyy h:mm a')}
                     </span>
                     <div className="space-x-2">
-                      <Button variant="ghost" size="xs" onClick={() => startEditing(note)}>
+                      <Button variant="ghost" size="sm" onClick={() => startEditing(note)}>
                         Edit
                       </Button>
-                      <Button variant="ghost" size="xs" onClick={() => deleteNote(note.id)}>
+                      <Button variant="ghost" size="sm" onClick={() => deleteNote(note.id)}>
                         Delete
                       </Button>
                     </div>
@@ -170,6 +172,7 @@ const NotesPanel: React.FC = () => {
 
 const CourseContent: React.FC = () => {
   const { 
+    modules, // Add modules from context
     currentLesson, 
     currentModule, 
     assessments, 

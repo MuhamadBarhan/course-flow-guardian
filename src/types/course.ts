@@ -43,10 +43,10 @@ export interface Assessment {
   lessonId: string;
   title: string;
   dueDate: string; // ISO date string
-  questions: Question[];
+  questions: AssessmentQuestion[];
 }
 
-export interface Question {
+export interface AssessmentQuestion {
   id: string;
   text: string;
   options: string[];
@@ -121,6 +121,7 @@ export interface Question {
   createdAt: string;
   answers: Answer[];
   resolved: boolean;
+  upvotes?: number; // Added upvotes property
 }
 
 export interface Answer {

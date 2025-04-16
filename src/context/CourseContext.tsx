@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Module, Lesson, AttendanceRecord, Assessment, CourseProgress, CourseMetadata, Note, Discussion, Question as CourseQuestion } from '@/types/course';
+import { Module, Lesson, AttendanceRecord, Assessment, CourseProgress, CourseMetadata, Note, Discussion, Question as CourseQuestion, AssessmentQuestion } from '@/types/course';
 import { courseModules, attendanceRecords, assessments, courseMetadata, discussions, questions as courseQuestions } from '@/data/courseData';
 import { toast } from '@/components/ui/use-toast';
 import { isDateUnlocked } from '@/lib/utils';
@@ -77,14 +76,12 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   useEffect(() => {
-    // Initialize with the first module and lesson if nothing is selected
     if (!currentModule && modules.length > 0) {
       const firstUnlockedModule = modules.find(module => isModuleUnlocked(module));
       
       if (firstUnlockedModule) {
         setCurrentModule(firstUnlockedModule);
         
-        // Find first unlocked lesson in this module
         const firstUnlockedLesson = firstUnlockedModule.lessons.find(lesson => 
           isLessonUnlocked(lesson)
         );
@@ -141,7 +138,6 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       lessons: module.lessons.map(lesson => 
         lesson.id === lessonId ? { ...lesson, completed: true } : lesson
       ),
-      // Check if all lessons in the module are completed
       completed: module.lessons.every(lesson => 
         lesson.id === lessonId ? true : lesson.completed
       )
@@ -149,7 +145,6 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     setModules(updatedModules);
     
-    // Update progress
     setProgress(prev => ({
       ...prev,
       completedLessons: [...prev.completedLessons, lessonId],
@@ -159,7 +154,6 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .filter(id => !prev.completedModules.includes(id))
     }));
     
-    // Record attendance for today
     recordAttendance(lessonId);
     
     toast({
@@ -171,13 +165,11 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const recordAttendance = (lessonId: string, date = new Date()) => {
     const dateString = date.toISOString().split('T')[0];
     
-    // Check if there's already an attendance record for this date
     const existingRecordIndex = attendance.findIndex(
       record => record.date === dateString
     );
     
     if (existingRecordIndex >= 0) {
-      // Update existing record
       const updatedAttendance = [...attendance];
       updatedAttendance[existingRecordIndex] = {
         ...updatedAttendance[existingRecordIndex],
@@ -186,7 +178,6 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
       setAttendance(updatedAttendance);
     } else {
-      // Add new record
       setAttendance([
         ...attendance,
         {
@@ -216,7 +207,6 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }));
     
-    // If the assessment is passed and the current lesson has it, mark the lesson as completed
     if (score >= 70 && currentLesson && currentLesson.hasAssessment) {
       markLessonCompleted(currentLesson.id);
     }
@@ -326,7 +316,8 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       content,
       createdAt: new Date().toISOString(),
       resolved: false,
-      answers: []
+      answers: [],
+      upvotes: 0 // Add default upvotes
     };
     
     setCourseQuestions(prev => [...prev, newQuestion]);
@@ -411,7 +402,6 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
   
   const upvoteQuestion = (questionId: string) => {
-    // In a real app, you would check if the user has already upvoted
     setCourseQuestions(prev => 
       prev.map(question => 
         question.id === questionId 
@@ -422,7 +412,6 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
   
   const upvoteAnswer = (questionId: string, answerId: string) => {
-    // In a real app, you would check if the user has already upvoted
     setCourseQuestions(prev => 
       prev.map(question => 
         question.id === questionId 
@@ -440,7 +429,6 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
   
   const upvoteDiscussion = (discussionId: string) => {
-    // In a real app, you would check if the user has already upvoted
     setCourseDiscussions(prev => 
       prev.map(discussion => 
         discussion.id === discussionId 

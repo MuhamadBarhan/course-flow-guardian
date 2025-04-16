@@ -1,7 +1,9 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { useCourse } from '@/context/CourseContext';
-import { Play, Pause, SkipForward, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, SkipForward, Volume2, VolumeX, BookOpen, FileText, MessageSquare } from 'lucide-react';
 import { formatTime } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 const VideoPlayer: React.FC = () => {
   const { 
@@ -10,7 +12,13 @@ const VideoPlayer: React.FC = () => {
     togglePlay, 
     currentTime, 
     setCurrentTime,
-    openSkipModal
+    openSkipModal,
+    toggleResources,
+    toggleNotes,
+    toggleAITutor,
+    isResourcesOpen,
+    isNotesOpen,
+    isAITutorOpen
   } = useCourse();
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -122,7 +130,7 @@ const VideoPlayer: React.FC = () => {
           <div className="flex items-center space-x-4">
             <button 
               onClick={togglePlay} 
-              className="bg-course-primary hover:bg-course-primary-dark rounded-full w-10 h-10 flex items-center justify-center transition-colors"
+              className="bg-primary hover:bg-primary/80 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
             >
               {isPlaying ? <Pause size={20} /> : <Play size={20} />}
             </button>
@@ -140,20 +148,54 @@ const VideoPlayer: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <button onClick={toggleMute}>
-              {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </button>
+          <div className="flex items-center space-x-4">
+            <div className="hidden md:flex space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={toggleResources} 
+                className={isResourcesOpen ? "bg-primary/20" : ""}
+              >
+                <FileText size={16} className="mr-1" />
+                Resources
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={toggleNotes} 
+                className={isNotesOpen ? "bg-primary/20" : ""}
+              >
+                <BookOpen size={16} className="mr-1" />
+                Notes
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={toggleAITutor} 
+                className={isAITutorOpen ? "bg-primary/20" : ""}
+              >
+                <MessageSquare size={16} className="mr-1" />
+                AI Tutor
+              </Button>
+            </div>
             
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={volume}
-              onChange={handleVolumeChange}
-              className="w-24"
-            />
+            <div className="flex items-center space-x-2">
+              <button onClick={toggleMute}>
+                {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              </button>
+              
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={volume}
+                onChange={handleVolumeChange}
+                className="w-24"
+              />
+            </div>
           </div>
         </div>
         

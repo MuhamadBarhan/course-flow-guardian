@@ -1,6 +1,7 @@
 
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { parseISO } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -30,5 +31,23 @@ export function safeParseISO(dateString: string): Date | null {
   } catch (error) {
     console.error("Error parsing date:", error);
     return null;
+  }
+}
+
+// Check if a date is today or in the past (for module unlocking)
+export function isDateUnlocked(unlockDate: string): boolean {
+  try {
+    const date = parseISO(unlockDate);
+    const today = new Date();
+    
+    // Set both dates to midnight for fair comparison
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    
+    // Return true if unlock date is today or in the past
+    return date <= today;
+  } catch (error) {
+    console.error("Error checking unlock date:", error);
+    return false;
   }
 }

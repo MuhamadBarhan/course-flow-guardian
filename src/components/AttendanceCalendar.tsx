@@ -3,12 +3,12 @@ import React, { useState } from 'react';
 import { useCourse } from '@/context/CourseContext';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { format, isToday, isSameDay, parseISO } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { format, isToday, isSameDay } from 'date-fns';
+import { cn, safeParseISO } from '@/lib/utils';
 import { DayContent, DayContentProps } from 'react-day-picker';
 
 const AttendanceCalendar: React.FC = () => {
-  const { attendance } = useCourse();
+  const { attendance, assessments, courseMetadata } = useCourse();
   const [month, setMonth] = useState<Date>(new Date());
   
   // Calculate attendance statistics
@@ -28,19 +28,39 @@ const AttendanceCalendar: React.FC = () => {
     try {
       const record = attendance.find(a => {
         // Ensure we have a valid date in the attendance record
-        try {
-          const attendanceDate = parseISO(a.date);
-          return isSameDay(attendanceDate, date);
-        } catch (error) {
-          console.error("Invalid date in attendance record:", a.date);
-          return false;
-        }
+        const attendanceDate = safeParseISO(a.date);
+        return attendanceDate && isSameDay(attendanceDate, date);
       });
+      
+      // Find if there are any assessments due on this date
+      const assessmentDue = assessments.find(a => {
+        const dueDate = safeParseISO(a.dueDate);
+        return dueDate && isSameDay(dueDate, date);
+      });
+      
+      // Check if this is the course start or end date
+      const isStartDate = courseMetadata?.startDate && 
+        isSameDay(safeParseISO(courseMetadata.startDate) || new Date(), date);
+      
+      const isEndDate = courseMetadata?.endDate && 
+        isSameDay(safeParseISO(courseMetadata.endDate) || new Date(), date);
       
       let attendanceClass = "";
       
       if (record) {
         attendanceClass = record.present ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800";
+      }
+      
+      if (assessmentDue) {
+        attendanceClass = "bg-blue-200 text-blue-800";
+      }
+      
+      if (isStartDate) {
+        attendanceClass = "bg-purple-200 text-purple-800";
+      }
+      
+      if (isEndDate) {
+        attendanceClass = "bg-yellow-200 text-yellow-800";
       }
       
       if (isToday(date)) {
@@ -86,6 +106,10 @@ const AttendanceCalendar: React.FC = () => {
             <div className="flex items-center">
               <div className="w-4 h-4 rounded-full bg-red-200 mr-2"></div>
               <span className="text-sm">Absent</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-blue-200 mr-2"></div>
+              <span className="text-sm">Assessment</span>
             </div>
           </div>
         </div>

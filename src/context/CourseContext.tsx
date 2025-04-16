@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Module, Lesson, AttendanceRecord, Assessment, CourseProgress, CourseMetadata, Note, Discussion, Question as CourseQuestion, AssessmentQuestion } from '@/types/course';
+import { Module, Lesson, AttendanceRecord, Assessment, CourseProgress, CourseMetadata, Note, Discussion, Question as CourseQuestion, AssessmentQuestion, InVideoQuestion } from '@/types/course';
 import { courseModules, attendanceRecords, assessments, courseMetadata, discussions, questions as courseQuestions } from '@/data/courseData';
 import { toast } from '@/components/ui/use-toast';
 import { isDateUnlocked } from '@/lib/utils';
@@ -48,31 +49,35 @@ interface CourseContextType {
   upvoteDiscussion: (discussionId: string) => void;
   isLessonUnlocked: (lesson: Lesson) => boolean;
   isModuleUnlocked: (module: Module) => boolean;
+  markInVideoQuestionAnswered: (questionId: string) => void;
+  getNextLesson: () => Lesson | null;
+  downloadCertificate: () => void;
 }
 
 const CourseContext = createContext<CourseContextType | undefined>(undefined);
 
-export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [modules, setModules] = useState<Module[]>(courseModules);
-  const [currentModule, setCurrentModule] = useState<Module | null>(null);
-  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(attendanceRecords);
+export const CourseProvider = ({ children }) => {
+  const [modules, setModules] = useState(courseModules);
+  const [currentModule, setCurrentModule] = useState(null);
+  const [currentLesson, setCurrentLesson] = useState(null);
+  const [attendance, setAttendance] = useState(attendanceRecords);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isSkipModalOpen, setIsSkipModalOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isAITutorOpen, setIsAITutorOpen] = useState(false);
-  const [currentNote, setCurrentNote] = useState<Note | null>(null);
-  const [courseDiscussions, setCourseDiscussions] = useState<Discussion[]>(discussions);
-  const [courseQuestionsState, setCourseQuestions] = useState<CourseQuestion[]>(courseQuestions);
-  const [progress, setProgress] = useState<CourseProgress>({
+  const [currentNote, setCurrentNote] = useState(null);
+  const [courseDiscussions, setCourseDiscussions] = useState(discussions);
+  const [courseQuestionsState, setCourseQuestions] = useState(courseQuestions);
+  const [progress, setProgress] = useState({
     completedLessons: [],
     completedModules: [],
     lastAccessedLessonId: null,
     assessmentResults: {},
     notes: [],
     bookmarks: [],
+    answeredInVideoQuestions: [],
   });
 
   useEffect(() => {
@@ -124,15 +129,15 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsNotesOpen(false);
   };
   
-  const isModuleUnlocked = (module: Module): boolean => {
+  const isModuleUnlocked = (module) => {
     return isDateUnlocked(module.unlockDate);
   };
   
-  const isLessonUnlocked = (lesson: Lesson): boolean => {
+  const isLessonUnlocked = (lesson) => {
     return isDateUnlocked(lesson.unlockDate);
   };
 
-  const markLessonCompleted = (lessonId: string) => {
+  const markLessonCompleted = (lessonId) => {
     const updatedModules = modules.map(module => ({
       ...module,
       lessons: module.lessons.map(lesson => 
@@ -162,7 +167,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
-  const recordAttendance = (lessonId: string, date = new Date()) => {
+  const recordAttendance = (lessonId, date = new Date()) => {
     const dateString = date.toISOString().split('T')[0];
     
     const existingRecordIndex = attendance.findIndex(
@@ -189,12 +194,12 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const getCurrentAssessment = (): Assessment | null => {
+  const getCurrentAssessment = () => {
     if (!currentLesson) return null;
     return assessments.find(a => a.lessonId === currentLesson.id) || null;
   };
 
-  const submitAssessment = (assessmentId: string, score: number) => {
+  const submitAssessment = (assessmentId, score) => {
     setProgress(prev => ({
       ...prev,
       assessmentResults: {
@@ -207,25 +212,62 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }));
     
-    if (score >= 70 && currentLesson && currentLesson.hasAssessment) {
+    // If score is 80% or higher, mark lesson as completed and move to next lesson
+    if (score >= 80 && currentLesson && currentLesson.hasAssessment) {
       markLessonCompleted(currentLesson.id);
+      
+      // Move to next lesson
+      const nextLesson = getNextLesson();
+      if (nextLesson) {
+        setTimeout(() => {
+          setCurrentLesson(nextLesson);
+        }, 1500); // Delay to allow the user to see the success message
+      }
     }
     
     closeSkipModal();
     
     toast({
-      title: score >= 70 ? "Assessment Passed!" : "Assessment Failed",
-      description: score >= 70 
-        ? `Congratulations! You scored ${score}%.` 
-        : `You scored ${score}%. Try again to continue.`,
-      variant: score >= 70 ? "default" : "destructive",
+      title: score >= 80 ? "Assessment Passed!" : "Assessment Failed",
+      description: score >= 80 
+        ? `Congratulations! You scored ${score}%. Moving to next lesson.` 
+        : `You scored ${score}%. You need 80% to continue. Try again.`,
+      variant: score >= 80 ? "default" : "destructive",
     });
   };
   
-  const addNote = (content: string) => {
+  const getNextLesson = () => {
+    if (!currentModule || !currentLesson) return null;
+    
+    // Find current lesson index
+    const currentLessonIndex = currentModule.lessons.findIndex(
+      lesson => lesson.id === currentLesson.id
+    );
+    
+    // If there's a next lesson in this module
+    if (currentLessonIndex < currentModule.lessons.length - 1) {
+      return currentModule.lessons[currentLessonIndex + 1];
+    }
+    
+    // If this is the last lesson in the module, find the next module
+    const currentModuleIndex = modules.findIndex(
+      module => module.id === currentModule.id
+    );
+    
+    if (currentModuleIndex < modules.length - 1) {
+      const nextModule = modules[currentModuleIndex + 1];
+      if (nextModule.lessons.length > 0 && isModuleUnlocked(nextModule)) {
+        return nextModule.lessons[0];
+      }
+    }
+    
+    return null;
+  };
+  
+  const addNote = (content) => {
     if (!currentLesson) return;
     
-    const newNote: Note = {
+    const newNote = {
       id: `note-${Date.now()}`,
       lessonId: currentLesson.id,
       content,
@@ -246,7 +288,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
   
-  const updateNote = (noteId: string, content: string) => {
+  const updateNote = (noteId, content) => {
     setProgress(prev => ({
       ...prev,
       notes: prev.notes.map(note => 
@@ -262,7 +304,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
   
-  const deleteNote = (noteId: string) => {
+  const deleteNote = (noteId) => {
     setProgress(prev => ({
       ...prev,
       notes: prev.notes.filter(note => note.id !== noteId)
@@ -276,11 +318,11 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
   
-  const toggleBookmark = (lessonId: string) => {
+  const toggleBookmark = (lessonId) => {
     setProgress(prev => {
-      const isBookmarked = prev.bookmarks.includes(lessonId);
+      const isCurrentlyBookmarked = prev.bookmarks.includes(lessonId);
       
-      if (isBookmarked) {
+      if (isCurrentlyBookmarked) {
         return {
           ...prev,
           bookmarks: prev.bookmarks.filter(id => id !== lessonId)
@@ -301,14 +343,14 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
   
-  const isBookmarked = (lessonId: string): boolean => {
+  const isBookmarked = (lessonId) => {
     return progress.bookmarks.includes(lessonId);
   };
   
-  const submitQuestion = (content: string) => {
+  const submitQuestion = (content) => {
     if (!currentLesson) return;
     
-    const newQuestion: CourseQuestion = {
+    const newQuestion = {
       id: `question-${Date.now()}`,
       lessonId: currentLesson.id,
       userId: "user-1", // In a real app, this would be the current user's ID
@@ -317,7 +359,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       createdAt: new Date().toISOString(),
       resolved: false,
       answers: [],
-      upvotes: 0 // Add default upvotes
+      upvotes: 0
     };
     
     setCourseQuestions(prev => [...prev, newQuestion]);
@@ -328,7 +370,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
   
-  const submitAnswer = (questionId: string, content: string) => {
+  const submitAnswer = (questionId, content) => {
     const newAnswer = {
       id: `answer-${Date.now()}`,
       questionId,
@@ -354,10 +396,10 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
   
-  const submitDiscussion = (content: string) => {
+  const submitDiscussion = (content) => {
     if (!currentLesson) return;
     
-    const newDiscussion: Discussion = {
+    const newDiscussion = {
       id: `discussion-${Date.now()}`,
       lessonId: currentLesson.id,
       userId: "user-1", // In a real app, this would be the current user's ID
@@ -376,7 +418,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
   
-  const submitDiscussionReply = (discussionId: string, content: string) => {
+  const submitDiscussionReply = (discussionId, content) => {
     const newReply = {
       id: `reply-${Date.now()}`,
       discussionId,
@@ -401,7 +443,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
   
-  const upvoteQuestion = (questionId: string) => {
+  const upvoteQuestion = (questionId) => {
     setCourseQuestions(prev => 
       prev.map(question => 
         question.id === questionId 
@@ -411,7 +453,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   };
   
-  const upvoteAnswer = (questionId: string, answerId: string) => {
+  const upvoteAnswer = (questionId, answerId) => {
     setCourseQuestions(prev => 
       prev.map(question => 
         question.id === questionId 
@@ -428,7 +470,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   };
   
-  const upvoteDiscussion = (discussionId: string) => {
+  const upvoteDiscussion = (discussionId) => {
     setCourseDiscussions(prev => 
       prev.map(discussion => 
         discussion.id === discussionId 
@@ -436,6 +478,61 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           : discussion
       )
     );
+  };
+  
+  const markInVideoQuestionAnswered = (questionId) => {
+    // Mark the question as answered in the progress
+    setProgress(prev => ({
+      ...prev,
+      answeredInVideoQuestions: [...prev.answeredInVideoQuestions, questionId]
+    }));
+    
+    // Also update the lessons to mark the question as answered
+    if (currentLesson && currentLesson.inVideoQuestions) {
+      const updatedModules = modules.map(module => ({
+        ...module,
+        lessons: module.lessons.map(lesson => 
+          lesson.id === currentLesson.id 
+            ? { 
+                ...lesson, 
+                inVideoQuestions: lesson.inVideoQuestions?.map(q => 
+                  q.id === questionId ? { ...q, answered: true } : q
+                )
+              } 
+            : lesson
+        )
+      }));
+      
+      setModules(updatedModules);
+    }
+  };
+  
+  const downloadCertificate = () => {
+    const allLessonsCompleted = modules.flatMap(m => m.lessons).every(
+      lesson => progress.completedLessons.includes(lesson.id)
+    );
+    
+    if (allLessonsCompleted) {
+      // In a real app, this would generate and download a certificate
+      toast({
+        title: "Certificate Generated",
+        description: "Your certificate has been generated and is downloading now.",
+      });
+      
+      // Mock download - in a real app, this would be a real file
+      const link = document.createElement('a');
+      link.href = 'data:text/plain;charset=utf-8,This is a certificate for completing the course';
+      link.download = `${courseMetadata.title.replace(/\s+/g, '_')}_Certificate.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      toast({
+        title: "Cannot Generate Certificate",
+        description: "You need to complete all lessons to receive your certificate.",
+        variant: "destructive",
+      });
+    }
   };
 
   const value = {
@@ -482,12 +579,15 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     upvoteDiscussion,
     isLessonUnlocked,
     isModuleUnlocked,
+    markInVideoQuestionAnswered,
+    getNextLesson,
+    downloadCertificate
   };
 
   return <CourseContext.Provider value={value}>{children}</CourseContext.Provider>;
 };
 
-export const useCourse = (): CourseContextType => {
+export const useCourse = () => {
   const context = useContext(CourseContext);
   if (context === undefined) {
     throw new Error('useCourse must be used within a CourseProvider');

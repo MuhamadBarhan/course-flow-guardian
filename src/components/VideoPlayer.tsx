@@ -4,8 +4,13 @@ import { useCourse } from '@/context/CourseContext';
 import { Play, Pause, SkipForward, Volume2, VolumeX, BookOpen, FileText, MessageSquare } from 'lucide-react';
 import { formatTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { InVideoQuestion } from '@/types/course';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
-const VideoPlayer: React.FC = () => {
+const VideoPlayer = () => {
   const { 
     currentLesson, 
     isPlaying, 
@@ -18,14 +23,49 @@ const VideoPlayer: React.FC = () => {
     toggleAITutor,
     isResourcesOpen,
     isNotesOpen,
-    isAITutorOpen
+    isAITutorOpen,
+    markInVideoQuestionAnswered
   } = useCourse();
   
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef(null);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [duration, setDuration] = useState(0);
   const [seeking, setSeeking] = useState(false);
+  const [activeQuestion, setActiveQuestion] = useState(null);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [showQuestionDialog, setShowQuestionDialog] = useState(false);
+  
+  // Check for in-video questions
+  useEffect(() => {
+    if (currentLesson?.inVideoQuestions && videoRef.current && isPlaying) {
+      const currentQuestions = currentLesson.inVideoQuestions.filter(
+        q => Math.abs(q.timeInSeconds - currentTime) < 0.5 && !q.answered
+      );
+      
+      if (currentQuestions.length > 0) {
+        setActiveQuestion(currentQuestions[0]);
+        setShowQuestionDialog(true);
+        togglePlay(); // Pause the video
+      }
+    }
+  }, [currentTime, currentLesson, isPlaying]);
+  
+  // Detect tab visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isSkipModalOpen) {
+        // User switched tabs during assessment
+        alert("Please don't switch tabs during the assessment!");
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isSkipModalOpen]);
   
   useEffect(() => {
     if (videoRef.current) {
@@ -53,7 +93,7 @@ const VideoPlayer: React.FC = () => {
     }
   };
   
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVolumeChange = (e) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
     if (videoRef.current) {
@@ -68,7 +108,7 @@ const VideoPlayer: React.FC = () => {
     }
   };
   
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSeek = (e) => {
     const time = parseFloat(e.target.value);
     setSeeking(true);
     setCurrentTime(time);
@@ -90,6 +130,26 @@ const VideoPlayer: React.FC = () => {
       }
     } else {
       openSkipModal();
+    }
+  };
+  
+  const handleAnswerSubmit = () => {
+    if (selectedAnswer !== null && activeQuestion) {
+      // Mark as answered and resume video
+      markInVideoQuestionAnswered(activeQuestion.id);
+      
+      // Check if answer is correct and show feedback
+      const isCorrect = selectedAnswer === activeQuestion.correctOptionIndex;
+      
+      // Show a message based on the answer
+      alert(isCorrect ? "Correct!" : "Incorrect. The correct answer was: " + 
+        activeQuestion.options[activeQuestion.correctOptionIndex]);
+      
+      // Close dialog and continue video
+      setShowQuestionDialog(false);
+      setActiveQuestion(null);
+      setSelectedAnswer(null);
+      togglePlay(); // Resume the video
     }
   };
   
@@ -211,6 +271,42 @@ const VideoPlayer: React.FC = () => {
           className="w-full mt-4 hidden"
         />
       </div>
+      
+      {/* In-video question dialog */}
+      <Dialog open={showQuestionDialog} onOpenChange={setShowQuestionDialog}>
+        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Quick Question</DialogTitle>
+          </DialogHeader>
+          
+          {activeQuestion && (
+            <div className="py-4">
+              <p className="font-medium mb-4">{activeQuestion.questionText}</p>
+              
+              <RadioGroup
+                value={selectedAnswer !== null ? selectedAnswer.toString() : undefined}
+                onValueChange={(value) => setSelectedAnswer(parseInt(value))}
+              >
+                {activeQuestion.options.map((option, index) => (
+                  <div key={index} className="flex items-center space-x-2 mb-2">
+                    <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                    <Label htmlFor={`option-${index}`}>{option}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button 
+              onClick={handleAnswerSubmit} 
+              disabled={selectedAnswer === null}
+            >
+              Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

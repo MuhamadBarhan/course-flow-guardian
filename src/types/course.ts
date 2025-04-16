@@ -19,12 +19,23 @@ export interface Lesson {
   unlockDate: string; // ISO date string when this lesson unlocks
   resourceLinks?: Resource[];
   codingExercises?: CodingExercise[];
+  learningObjectives?: string[];
+  inVideoQuestions?: InVideoQuestion[];
+}
+
+export interface InVideoQuestion {
+  id: string;
+  questionText: string;
+  timeInSeconds: number; // When to show the question in the video
+  options: string[];
+  correctOptionIndex: number;
+  answered: boolean;
 }
 
 export interface Resource {
   id: string;
   title: string;
-  type: 'pdf' | 'link' | 'note' | 'code' | 'video';
+  type: 'pdf' | 'link' | 'note' | 'code' | 'video' | 'project' | 'asset' | 'downloadable';
   url: string;
   description?: string;
 }
@@ -72,6 +83,7 @@ export interface CourseProgress {
   };
   notes: Note[];
   bookmarks: string[]; // Array of lesson IDs that are bookmarked
+  answeredInVideoQuestions: string[]; // Array of in-video question IDs that have been answered
 }
 
 export interface Note {
@@ -121,7 +133,10 @@ export interface Question {
   createdAt: string;
   answers: Answer[];
   resolved: boolean;
-  upvotes?: number; // Added upvotes property
+  upvotes: number;
+  text?: string;
+  options?: string[];
+  correctOptionIndex?: number;
 }
 
 export interface Answer {

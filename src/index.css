@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 255 78% 75%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -35,19 +36,12 @@
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -98,4 +92,44 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.calendar-day {
+  @apply flex items-center justify-center w-10 h-10 rounded-full cursor-pointer;
+}
+
+.calendar-day.present {
+  @apply bg-attendance-present text-green-800;
+}
+
+.calendar-day.absent {
+  @apply bg-attendance-absent text-white;
+}
+
+.calendar-day.today {
+  @apply border-2 border-course-primary;
+}
+
+.module-item {
+  @apply flex items-center p-3 my-1 rounded-md cursor-pointer transition-colors;
+}
+
+.module-item:hover {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+.module-item.active {
+  @apply bg-course-primary bg-opacity-10 text-course-primary;
+}
+
+.video-controls-custom button {
+  @apply p-2 rounded-md bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors;
+}
+
+.progress-bar {
+  @apply h-1 bg-gray-300 dark:bg-gray-700 rounded-full overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply h-full bg-course-primary transition-all duration-300 ease-in-out;
 }

@@ -3,7 +3,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Module, Lesson, AttendanceRecord, Assessment, CourseProgress, CourseMetadata, Note, Discussion, Question as CourseQuestion, AssessmentQuestion, InVideoQuestion } from '@/types/course';
 import { courseModules, attendanceRecords, assessments, courseMetadata, discussions, questions as courseQuestions } from '@/data/courseData';
 import { toast } from '@/components/ui/use-toast';
-import { isDateUnlocked } from '@/lib/utils';
+import { isDateUnlocked, safeParseISO } from '@/lib/utils';
+import { isSameDay, isAfter, isBefore, subDays, addDays } from 'date-fns';
 
 interface CourseContextType {
   modules: Module[];
@@ -79,8 +80,41 @@ export const CourseProvider = ({ children }) => {
     bookmarks: [],
     answeredInVideoQuestions: [],
   });
+  
+  // Track last visit date
+  const [lastVisitDate, setLastVisitDate] = useState(() => {
+    const storedDate = localStorage.getItem('lastVisitDate');
+    return storedDate ? new Date(storedDate) : new Date();
+  });
 
   useEffect(() => {
+    // Update last visit date in localStorage
+    const today = new Date();
+    localStorage.setItem('lastVisitDate', today.toISOString());
+    
+    // Check for absent days between last visit and today
+    if (lastVisitDate) {
+      markAttendanceForMissedDays(lastVisitDate, today);
+    }
+    
+    setLastVisitDate(today);
+    
+    // Check for today's attendance and mark as present
+    const todayStr = today.toISOString().split('T')[0];
+    const alreadyMarkedToday = attendance.some(
+      record => record.date === todayStr
+    );
+    
+    if (!alreadyMarkedToday) {
+      // Mark attendance for today as present
+      setAttendance(prev => [...prev, {
+        date: todayStr,
+        present: true,
+        lessonId: null // Will be updated when a lesson is completed
+      }]);
+    }
+    
+    // Initialize current module and lesson
     if (!currentModule && modules.length > 0) {
       const firstUnlockedModule = modules.find(module => isModuleUnlocked(module));
       
@@ -97,6 +131,42 @@ export const CourseProvider = ({ children }) => {
       }
     }
   }, [modules]);
+  
+  // Mark attendance for days when user was absent
+  const markAttendanceForMissedDays = (lastVisit, today) => {
+    // Set both dates to midnight for comparison
+    const lastDate = new Date(lastVisit);
+    lastDate.setHours(0, 0, 0, 0);
+    
+    const currentDate = new Date(today);
+    currentDate.setHours(0, 0, 0, 0);
+    
+    // If last visit was today, no need to mark absent days
+    if (isSameDay(lastDate, currentDate)) {
+      return;
+    }
+    
+    let dateToCheck = addDays(lastDate, 1);
+    
+    // Loop through each day between last visit and today
+    while (isBefore(dateToCheck, currentDate)) {
+      const dateStr = dateToCheck.toISOString().split('T')[0];
+      
+      // Check if we already have a record for this date
+      const existingRecord = attendance.find(record => record.date === dateStr);
+      
+      if (!existingRecord) {
+        // Mark as absent for this day
+        setAttendance(prev => [...prev, {
+          date: dateStr,
+          present: false,
+          lessonId: null
+        }]);
+      }
+      
+      dateToCheck = addDays(dateToCheck, 1);
+    }
+  };
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
@@ -130,11 +200,63 @@ export const CourseProvider = ({ children }) => {
   };
   
   const isModuleUnlocked = (module) => {
-    return isDateUnlocked(module.unlockDate);
+    // Get all module indices
+    const moduleIndex = modules.findIndex(m => m.id === module.id);
+    
+    // Module 0 (first module) is always unlocked on day 1
+    if (moduleIndex === 0) {
+      return true;
+    }
+    
+    // For subsequent modules, check if previous module is completed
+    // and also check if enough days have passed since course start
+    const previousModulesCompleted = modules
+      .slice(0, moduleIndex)
+      .every(m => m.completed);
+    
+    // Check if moduleIndex days have passed since course start date
+    const courseStartDate = safeParseISO(courseMetadata.startDate);
+    if (!courseStartDate) return false;
+    
+    // Get today's date
+    const today = new Date();
+    
+    // Calculate the date when this module should unlock
+    // Each module unlocks on a new day
+    const moduleUnlockDate = addDays(courseStartDate, moduleIndex);
+    
+    // Module unlocks if today is after or on the unlock date
+    const daysPassed = !isBefore(today, moduleUnlockDate);
+    
+    // Previous absent days get unlocked when user returns
+    // This is handled by ensuring all previous modules are available on return
+    
+    return daysPassed;
   };
   
   const isLessonUnlocked = (lesson) => {
-    return isDateUnlocked(lesson.unlockDate);
+    // Find which module this lesson belongs to
+    const parentModule = modules.find(module => 
+      module.lessons.some(l => l.id === lesson.id)
+    );
+    
+    if (!parentModule) return false;
+    
+    // If the module is not unlocked, lessons are not unlocked
+    if (!isModuleUnlocked(parentModule)) return false;
+    
+    // Get the lesson index in the module
+    const lessonIndex = parentModule.lessons.findIndex(l => l.id === lesson.id);
+    
+    // First lesson is always unlocked if module is unlocked
+    if (lessonIndex === 0) return true;
+    
+    // For subsequent lessons, previous lesson must be completed
+    const previousLessonsCompleted = parentModule.lessons
+      .slice(0, lessonIndex)
+      .every(l => progress.completedLessons.includes(l.id));
+    
+    return previousLessonsCompleted;
   };
 
   const markLessonCompleted = (lessonId) => {

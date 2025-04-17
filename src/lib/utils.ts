@@ -1,7 +1,7 @@
 
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { parseISO } from "date-fns"
+import { parseISO, isSameDay, isAfter, isBefore, addDays } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -22,6 +22,8 @@ export function formatTime(seconds: number): string {
 // Safe date parsing function to handle invalid dates
 export function safeParseISO(dateString: string): Date | null {
   try {
+    if (!dateString) return null;
+    
     const date = parseISO(dateString);
     // Check if the date is valid
     if (isNaN(date.getTime())) {
@@ -49,5 +51,39 @@ export function isDateUnlocked(unlockDate: string): boolean {
   } catch (error) {
     console.error("Error checking unlock date:", error);
     return false;
+  }
+}
+
+// Calculate days passed since a specific date
+export function daysSinceDate(dateString: string): number {
+  try {
+    const date = safeParseISO(dateString);
+    if (!date) return 0;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    
+    // Calculate difference in days
+    const diffTime = today.getTime() - date.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  } catch (error) {
+    console.error("Error calculating days:", error);
+    return 0;
+  }
+}
+
+// Calculate the expected unlock date for a module based on its index
+export function getModuleUnlockDate(courseStartDate: string, moduleIndex: number): Date | null {
+  try {
+    const startDate = safeParseISO(courseStartDate);
+    if (!startDate) return null;
+    
+    // Module 0 (first module) unlocks on day 1
+    // Each subsequent module unlocks one day later
+    return addDays(startDate, moduleIndex);
+  } catch (error) {
+    console.error("Error calculating module unlock date:", error);
+    return null;
   }
 }
